@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; touch-action: manipulation; }
+        #camera-feed { transform: scaleX(-1); }
+        .loader { border: 8px solid #f3f3f3; border-radius: 50%; border-top: 8px solid #3498db; width: 60px; height: 60px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-md mx-auto bg-white rounded-3xl shadow-2xl p-6 space-y-6">
+        <h1 class="text-2xl font-bold text-center text-gray-800">Employee Attendance</h1>
+
+        <!-- Step 1: Employee ID and PIN Input -->
+        <div id="login-section" class="space-y-5">
+            <div>
+                <label for="employeeId" class="block text-sm font-semibold text-gray-700 mb-1">Aapka Employee ID daalein:</label>
+                <input type="text" id="employeeId" class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg transition-all" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            </div>
+            <div>
+                <label for="employeePin" class="block text-sm font-semibold text-gray-700 mb-1">Aapka Verification Pin:</label>
+                <input type="password" id="employeePin" class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-lg transition-all" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            </div>
+            <button type="button" id="verify-id-btn" class="w-full bg-indigo-600 text-white py-4 px-4 rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 font-bold text-lg shadow-lg transition-all">ID Check Karein</button>
+            <div class="text-center">
+                <a href="#" id="show-forgot-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold transition-all">Forgot PIN?</a>
+            </div>
+        </div>
+
+        <!-- Forgot PIN Section -->
+        <div id="forgot-pin-section" class="hidden space-y-5">
+            <h2 class="text-xl font-bold text-center text-gray-700">Reset Password (PIN)</h2>
+            <div id="otp-request-box" class="space-y-4">
+                <div>
+                    <label for="forgot-employeeId" class="block text-sm font-semibold text-gray-700 mb-1">Employee ID:</label>
+                    <input type="text" id="forgot-employeeId" class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <button type="button" id="send-otp-btn" class="w-full bg-yellow-500 text-white py-4 px-4 rounded-xl hover:bg-yellow-600 font-bold shadow-md transition-all">Send OTP on Email</button>
+            </div>
+            <div id="otp-verify-box" class="hidden space-y-4">
+                <p class="text-sm text-green-600 text-center font-bold">OTP aapke email par bheja gaya hai.</p>
+                <div>
+                    <label for="otp-input" class="block text-sm font-semibold text-gray-700 mb-1">Enter OTP:</label>
+                    <input type="text" id="otp-input" class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <div>
+                    <label for="new-pin-input" class="block text-sm font-semibold text-gray-700 mb-1">New PIN (Numbers only):</label>
+                    <input type="password" id="new-pin-input" class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl" inputmode="numeric" pattern="[0-9]*" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                </div>
+                <button type="button" id="reset-pin-btn" class="w-full bg-green-500 text-white py-4 px-4 rounded-xl hover:bg-green-600 font-bold shadow-md transition-all">Reset & Save PIN</button>
+            </div>
+            <button type="button" id="back-to-login-btn" class="w-full bg-gray-200 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-300 font-bold transition-all mt-2">Wapas Login Par Jayein</button>
+        </div>
+
+        <!-- Step 2: Name Confirmation -->
+        <div id="confirmation-section" class="hidden text-center space-y-5">
+            <div class="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                <p class="text-sm text-gray-600">Kya aap wahi hain?</p>
+                <p class="text-2xl font-bold text-indigo-700 mt-1" id="employee-name"></p>
+            </div>
+            <div class="space-y-3">
+                <button type="button" id="proceed-btn" class="w-full bg-green-500 text-white py-4 px-4 rounded-xl hover:bg-green-600 font-bold text-lg shadow-lg transition-all">Haan, Aage Badhein</button>
+                <button type="button" id="back-btn" class="w-full bg-gray-200 text-gray-700 py-4 px-4 rounded-xl hover:bg-gray-300 font-bold text-lg transition-all">Nahi, Wapas Jayein</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Camera and Attendance -->
+        <div id="attendance-section" class="hidden space-y-5">
+            <div class="relative bg-gray-900 rounded-2xl overflow-hidden w-full aspect-[3/4] shadow-inner ring-4 ring-gray-100">
+                <video id="camera-feed" playsinline autoplay class="w-full h-full object-cover"></video>
+                <canvas id="photo-canvas" class="hidden"></canvas>
+            </div>
+            
+            <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-center min-h-[3rem]">
+                <p id="location-info" class="text-xs font-medium text-center text-indigo-800 leading-tight"></p>
+            </div>
+
+            <!-- Daily Complete Message Box -->
+            <div id="daily-complete-msg" class="hidden bg-green-100 text-green-800 p-3 rounded-lg text-center text-sm font-bold border border-green-200">
+                ✅ Aapki aaj ki attendance poori ho chuki hai.
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <button type="button" id="punch-in-btn" class="bg-green-500 text-white py-4 px-2 rounded-xl hover:bg-green-600 font-bold text-lg shadow-lg disabled:bg-gray-400 disabled:opacity-50 transition-all">Punch In</button>
+                <button type="button" id="punch-out-btn" class="bg-red-500 text-white py-4 px-2 rounded-xl hover:bg-red-600 font-bold text-lg shadow-lg disabled:bg-gray-400 disabled:opacity-50 transition-all">Punch Out</button>
+            </div>
+            <a id="myReportLink" href="#" class="text-center block text-sm text-indigo-600 hover:text-indigo-800 hover:underline mt-4 font-semibold transition-all">View My Report</a>
+        </div>
+        
+        <!-- Loading & Message Overlays -->
+        <div id="loader-overlay" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex-col items-center justify-center z-50 backdrop-blur-sm">
+            <div class="loader"></div>
+            <p id="loader-message" class="text-white mt-5 text-lg font-semibold tracking-wide"></p>
+        </div>
+        
+        <div id="message-box" class="hidden fixed top-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white py-3 px-6 rounded-full shadow-2xl z-50 w-11/12 max-w-sm text-center font-medium transition-all transform duration-300">
+            <p id="message-text"></p>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================================================
+        // IMPORTANT: PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE
+        // =========================================================================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyaQsrqv_Fqonl54pYKVIlO-TdMojBNVUsLE8jOuT8oQWd-iAshNJO_AR2RmE2tW-f4/exec"; 
+        
+        const loginSection = document.getElementById('login-section');
+        const confirmationSection = document.getElementById('confirmation-section');
+        const attendanceSection = document.getElementById('attendance-section');
+        const forgotPinSection = document.getElementById('forgot-pin-section');
+        
+        const employeeIdInput = document.getElementById('employeeId');
+        const employeePinInput = document.getElementById('employeePin');
+        const verifyIdBtn = document.getElementById('verify-id-btn');
+        const employeeNameSpan = document.getElementById('employee-name');
+        const proceedBtn = document.getElementById('proceed-btn');
+        const backBtn = document.getElementById('back-btn');
+        const video = document.getElementById('camera-feed');
+        const canvas = document.getElementById('photo-canvas');
+        const locationInfo = document.getElementById('location-info');
+        const punchInBtn = document.getElementById('punch-in-btn');
+        const punchOutBtn = document.getElementById('punch-out-btn');
+        const dailyCompleteMsg = document.getElementById('daily-complete-msg');
+        const myReportLink = document.getElementById('myReportLink');
+        const loaderOverlay = document.getElementById('loader-overlay');
+        const loaderMessage = document.getElementById('loader-message');
+        
+        // Forgot PIN elements
+        const showForgotBtn = document.getElementById('show-forgot-btn');
+        const backToLoginBtn = document.getElementById('back-to-login-btn');
+        const sendOtpBtn = document.getElementById('send-otp-btn');
+        const resetPinBtn = document.getElementById('reset-pin-btn');
+        const otpRequestBox = document.getElementById('otp-request-box');
+        const otpVerifyBox = document.getElementById('otp-verify-box');
+
+        let currentStream;
+        let currentCoordinates = null;
+        let attendanceStatus = null;
+
+        verifyIdBtn.addEventListener('click', verifyEmployee);
+        proceedBtn.addEventListener('click', initCameraAndLocation);
+        backBtn.addEventListener('click', goBackToLogin);
+        punchInBtn.addEventListener('click', () => handlePunch('In'));
+        punchOutBtn.addEventListener('click', () => handlePunch('Out'));
+
+        showForgotBtn.addEventListener('click', () => {
+            loginSection.classList.add('hidden');
+            forgotPinSection.classList.remove('hidden');
+            otpRequestBox.classList.remove('hidden');
+            otpVerifyBox.classList.add('hidden');
+            document.getElementById('forgot-employeeId').value = employeeIdInput.value;
+        });
+
+        backToLoginBtn.addEventListener('click', () => {
+            forgotPinSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            document.getElementById('forgot-employeeId').value = '';
+            document.getElementById('otp-input').value = '';
+            document.getElementById('new-pin-input').value = '';
+        });
+
+        sendOtpBtn.addEventListener('click', async () => {
+            const empId = document.getElementById('forgot-employeeId').value.trim();
+            if(!empId) { showMessage('Employee ID daalna zaruri hai.', 'error'); return; }
+            
+            showLoader('OTP bheja ja raha hai...');
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=sendOtp&empId=${empId}`);
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showMessage(result.message, 'success');
+                    otpRequestBox.classList.add('hidden');
+                    otpVerifyBox.classList.remove('hidden');
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Dobara try karein.', 'error');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        resetPinBtn.addEventListener('click', async () => {
+            const empId = document.getElementById('forgot-employeeId').value.trim();
+            const otp = document.getElementById('otp-input').value.trim();
+            const newPin = document.getElementById('new-pin-input').value.trim();
+
+            if(!otp || !newPin) { showMessage('OTP aur naya PIN dono bharein.', 'error'); return; }
+
+            showLoader('PIN update ho raha hai...');
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=resetPin&empId=${empId}&otp=${otp}&newPin=${newPin}`);
+                const result = await response.json();
+                if (result.status === 'success') {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => { backToLoginBtn.click(); }, 2000);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Dobara try karein.', 'error');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        async function verifyEmployee() {
+            const employeeId = employeeIdInput.value.trim();
+            const pin = employeePinInput.value.trim();
+            
+            if (!employeeId || !pin) {
+                showMessage('Kripya Employee ID aur PIN dono daalein.', 'error');
+                return;
+            }
+            
+            showLoader('ID aur PIN verify kiya ja raha hai...');
+            
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=verifyEmployee&employeeId=${employeeId}&pin=${pin}`);
+                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    if (result.attendanceStatus === "PunchedOut") {
+                        hideLoader();
+                        showMessage("Aapki aaj ki attendance poori ho chuki hai.", "info");
+                        return;
+                    }
+                    attendanceStatus = result.attendanceStatus; 
+                    employeeNameSpan.textContent = result.name;
+                    loginSection.classList.add('hidden');
+                    confirmationSection.classList.remove('hidden');
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                showMessage(error.message || 'Verification fail ho gaya. Network check karein.', 'error');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function initCameraAndLocation() {
+            showLoader('Camera aur Location shuru ho raha hai...');
+            try {
+                const employeeId = employeeIdInput.value.trim();
+                
+                // Now links to the local HTML file on GitHub
+                myReportLink.href = `my_report.html?empId=${employeeId}`;
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                video.srcObject = stream;
+                currentStream = stream;
+                confirmationSection.classList.add('hidden');
+                attendanceSection.classList.remove('hidden');
+                dailyCompleteMsg.classList.add('hidden'); 
+                
+                enablePunchButtons(false, false); 
+                
+                locationInfo.textContent = 'Location prapt ki ja rahi hai...';
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentCoordinates = position.coords;
+                        locationInfo.textContent = `Location: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+                        
+                        if (attendanceStatus === "None") {
+                            enablePunchButtons(true, false);
+                        } else if (attendanceStatus === "PunchedIn") {
+                            enablePunchButtons(false, true);
+                        } else if (attendanceStatus === "PunchedOut") {
+                            enablePunchButtons(false, false);
+                            dailyCompleteMsg.classList.remove('hidden');
+                        }
+                    },
+                    (error) => {
+                        locationInfo.textContent = 'Location access nahi ho paaya.';
+                        showMessage('Location anivarya hai. Kripya permission aur GPS setting check karein.', 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } catch (err) {
+                showMessage('Camera access nahi ho paaya. Kripya permission check karein.', 'error');
+                goBackToLogin();
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function handlePunch(punchType) {
+            showLoader(`Punch ${punchType} ho raha hai...`);
+            enablePunchButtons(false, false);
+            setTimeout(async () => {
+                try {
+                    const photoDataUrl = takePhoto();
+                    const employeeId = employeeIdInput.value.trim();
+                    const timestamp = new Date().toISOString();
+                    const formData = new FormData();
+                    formData.append('employeeId', employeeId);
+                    formData.append('timestamp', timestamp);
+                    formData.append('punchType', punchType);
+                    formData.append('latitude', currentCoordinates ? currentCoordinates.latitude : 'N/A');
+                    formData.append('longitude', currentCoordinates ? currentCoordinates.longitude : 'N/A');
+                    formData.append('photo', photoDataUrl.split(',')[1]);
+                    
+                    showLoader('Data upload kiya ja raha hai...');
+                    const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: formData });
+                    if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                    const result = await response.json();
+                    
+                    if (result.status === 'success') {
+                        showMessage(`Aapka Punch ${punchType} safaltapoorvak record ho gaya hai!`, 'success');
+                        stopCamera();
+                        goBackToLogin();
+                    } else {
+                        throw new Error(result.message || 'Unknown error');
+                    }
+                } catch (error) {
+                    showMessage('Kuch gadbad ho gayi. Kripya dobara koshish karein.', 'error');
+                     if (attendanceStatus === "None") {
+                        enablePunchButtons(true, false);
+                    } else if (attendanceStatus === "PunchedIn") {
+                        enablePunchButtons(false, true);
+                    }
+                } finally {
+                    hideLoader();
+                }
+            }, 500);
+        }
+
+        function goBackToLogin() {
+            stopCamera();
+            attendanceSection.classList.add('hidden');
+            confirmationSection.classList.add('hidden');
+            loginSection.classList.remove('hidden');
+            employeeIdInput.value = '';
+            employeePinInput.value = '';
+            attendanceStatus = null;
+        }
+
+        function takePhoto() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.translate(canvas.width, 0);
+            context.scale(-1, 1);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function showLoader(message) { 
+            loaderMessage.textContent = message; 
+            loaderOverlay.classList.remove('hidden'); 
+            loaderOverlay.classList.add('flex'); 
+        }
+        function hideLoader() { 
+            loaderOverlay.classList.add('hidden'); 
+            loaderOverlay.classList.remove('flex'); 
+        }
+        function enablePunchButtons(punchInEnabled, punchOutEnabled) {
+            punchInBtn.disabled = !punchInEnabled;
+            punchOutBtn.disabled = !punchOutEnabled;
+        }
+        function showMessage(text, type = 'info') {
+            const messageBox = document.getElementById('message-box');
+            const messageText = document.getElementById('message-text');
+            messageText.textContent = text;
+            messageBox.style.backgroundColor = type === 'success' ? '#28a745' : (type === 'error' ? '#dc3545' : '#343a40');
+            messageBox.classList.remove('hidden');
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 4000);
+        }
+    </script>
+</body>
+</html>
