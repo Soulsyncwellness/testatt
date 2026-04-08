@@ -95,7 +95,7 @@
                 ✅ Aapki aaj ki attendance poori ho chuki hai.
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
+            <div id="punch-buttons-container" class="grid grid-cols-2 gap-4">
                 <button type="button" id="punch-in-btn" class="bg-green-500 text-white py-4 px-2 rounded-xl hover:bg-green-600 font-bold text-lg shadow-lg disabled:bg-gray-400 disabled:opacity-50 transition-all">Punch In</button>
                 <button type="button" id="punch-out-btn" class="bg-red-500 text-white py-4 px-2 rounded-xl hover:bg-red-600 font-bold text-lg shadow-lg disabled:bg-gray-400 disabled:opacity-50 transition-all">Punch Out</button>
             </div>
@@ -137,6 +137,7 @@
         const refreshIcon = document.getElementById('refresh-icon');
         const punchInBtn = document.getElementById('punch-in-btn');
         const punchOutBtn = document.getElementById('punch-out-btn');
+        const punchButtonsContainer = document.getElementById('punch-buttons-container');
         const dailyCompleteMsg = document.getElementById('daily-complete-msg');
         const myReportLink = document.getElementById('myReportLink');
         const loaderOverlay = document.getElementById('loader-overlay');
@@ -240,11 +241,7 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    if (result.attendanceStatus === "PunchedOut") {
-                        hideLoader();
-                        showMessage("Aapki aaj ki attendance poori ho chuki hai.", "info");
-                        return;
-                    }
+                    // Log the user in regardless of attendance status
                     attendanceStatus = result.attendanceStatus; 
                     employeeNameSpan.textContent = result.name;
                     loginSection.classList.add('hidden');
@@ -271,7 +268,6 @@
                 currentStream = stream;
                 confirmationSection.classList.add('hidden');
                 attendanceSection.classList.remove('hidden');
-                dailyCompleteMsg.classList.add('hidden'); 
                 
                 // Immediately start finding the precise location once the camera is on
                 startLocationTracking();
@@ -303,12 +299,17 @@
                     locationInfo.textContent = `Location: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} (Accuracy: ${Math.round(position.coords.accuracy)}m)`;
                     
                     if (attendanceStatus === "None") {
+                        punchButtonsContainer.classList.remove('hidden');
+                        dailyCompleteMsg.classList.add('hidden');
                         enablePunchButtons(true, false);
                     } else if (attendanceStatus === "PunchedIn") {
+                        punchButtonsContainer.classList.remove('hidden');
+                        dailyCompleteMsg.classList.add('hidden');
                         enablePunchButtons(false, true);
                     } else if (attendanceStatus === "PunchedOut") {
-                        enablePunchButtons(false, false);
+                        punchButtonsContainer.classList.add('hidden');
                         dailyCompleteMsg.classList.remove('hidden');
+                        enablePunchButtons(false, false);
                     }
                 },
                 (error) => {
