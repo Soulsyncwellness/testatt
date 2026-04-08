@@ -10,6 +10,9 @@
         #camera-feed { transform: scaleX(-1); }
         .loader { border: 8px solid #f3f3f3; border-radius: 50%; border-top: 8px solid #3498db; width: 60px; height: 60px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Optional animation for the refresh icon */
+        .spin-anim { animation: spin 1s linear infinite; }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
@@ -78,8 +81,13 @@
                 <canvas id="photo-canvas" class="hidden"></canvas>
             </div>
             
-            <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-center min-h-[3rem]">
-                <p id="location-info" class="text-xs font-medium text-center text-indigo-800 leading-tight"></p>
+            <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between min-h-[3rem]">
+                <p id="location-info" class="text-xs font-medium text-left text-indigo-800 leading-tight flex-1"></p>
+                <button type="button" id="refresh-location-btn" class="ml-2 p-2 bg-indigo-200 rounded-full hover:bg-indigo-300 focus:outline-none transition-colors" title="Refresh Location">
+                    <svg id="refresh-icon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
             </div>
 
             <!-- Daily Complete Message Box -->
@@ -125,6 +133,8 @@
         const video = document.getElementById('camera-feed');
         const canvas = document.getElementById('photo-canvas');
         const locationInfo = document.getElementById('location-info');
+        const refreshLocationBtn = document.getElementById('refresh-location-btn');
+        const refreshIcon = document.getElementById('refresh-icon');
         const punchInBtn = document.getElementById('punch-in-btn');
         const punchOutBtn = document.getElementById('punch-out-btn');
         const dailyCompleteMsg = document.getElementById('daily-complete-msg');
@@ -149,6 +159,7 @@
         backBtn.addEventListener('click', goBackToLogin);
         punchInBtn.addEventListener('click', () => handlePunch('In'));
         punchOutBtn.addEventListener('click', () => handlePunch('Out'));
+        refreshLocationBtn.addEventListener('click', startLocationTracking);
 
         showForgotBtn.addEventListener('click', () => {
             loginSection.classList.add('hidden');
@@ -249,7 +260,7 @@
         }
 
         async function initCameraAndLocation() {
-            showLoader('Camera aur Location shuru ho raha hai...');
+            showLoader('Camera shuru ho raha hai...');
             try {
                 const employeeId = employeeIdInput.value.trim();
                 
@@ -262,42 +273,51 @@
                 attendanceSection.classList.remove('hidden');
                 dailyCompleteMsg.classList.add('hidden'); 
                 
-                enablePunchButtons(false, false); 
+                // Immediately start finding the precise location once the camera is on
+                startLocationTracking();
                 
-                locationInfo.textContent = 'Hardware GPS se precise location li ja rahi hai...';
-
-                // We now use watchPosition to continually update to the best accuracy possible
-                if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
-                
-                gpsWatchId = navigator.geolocation.watchPosition(
-                    (position) => {
-                        currentCoordinates = position.coords;
-                        // Added accuracy display to show how precise the lock is
-                        locationInfo.textContent = `Location: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} (Accuracy: ${Math.round(position.coords.accuracy)}m)`;
-                        
-                        // Enable buttons only after getting a location ping
-                        if (attendanceStatus === "None") {
-                            enablePunchButtons(true, false);
-                        } else if (attendanceStatus === "PunchedIn") {
-                            enablePunchButtons(false, true);
-                        } else if (attendanceStatus === "PunchedOut") {
-                            enablePunchButtons(false, false);
-                            dailyCompleteMsg.classList.remove('hidden');
-                        }
-                    },
-                    (error) => {
-                        locationInfo.textContent = 'Location access nahi ho paaya.';
-                        showMessage('Location anivarya hai. Kripya permission aur phone ka GPS (Location) ON karein.', 'error');
-                    },
-                    // Forces strict GPS hardware usage and allows time to lock
-                    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 } 
-                );
             } catch (err) {
                 showMessage('Camera access nahi ho paaya. Kripya permission check karein.', 'error');
                 goBackToLogin();
             } finally {
                 hideLoader();
             }
+        }
+
+        function startLocationTracking() {
+            enablePunchButtons(false, false); 
+            locationInfo.textContent = 'Hardware GPS se precise location li ja rahi hai...';
+            refreshIcon.classList.add('spin-anim');
+
+            if (gpsWatchId) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+            }
+            
+            // Highly aggressive settings to ensure a fresh, highly accurate hardware ping
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    refreshIcon.classList.remove('spin-anim');
+                    currentCoordinates = position.coords;
+                    
+                    // Show exact coordinates with precision tracking in meters
+                    locationInfo.textContent = `Location: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} (Accuracy: ${Math.round(position.coords.accuracy)}m)`;
+                    
+                    if (attendanceStatus === "None") {
+                        enablePunchButtons(true, false);
+                    } else if (attendanceStatus === "PunchedIn") {
+                        enablePunchButtons(false, true);
+                    } else if (attendanceStatus === "PunchedOut") {
+                        enablePunchButtons(false, false);
+                        dailyCompleteMsg.classList.remove('hidden');
+                    }
+                },
+                (error) => {
+                    refreshIcon.classList.remove('spin-anim');
+                    locationInfo.textContent = 'Location access nahi ho paaya. GPS ON karein aur Refresh dabayein.';
+                    showMessage('Location anivarya hai. Kripya permission aur phone ka GPS (Location) ON karein.', 'error');
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 } 
+            );
         }
 
         async function handlePunch(punchType) {
