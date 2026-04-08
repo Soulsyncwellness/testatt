@@ -132,7 +132,6 @@
         const loaderOverlay = document.getElementById('loader-overlay');
         const loaderMessage = document.getElementById('loader-message');
         
-        // Forgot PIN elements
         const showForgotBtn = document.getElementById('show-forgot-btn');
         const backToLoginBtn = document.getElementById('back-to-login-btn');
         const sendOtpBtn = document.getElementById('send-otp-btn');
@@ -143,6 +142,7 @@
         let currentStream;
         let currentCoordinates = null;
         let attendanceStatus = null;
+        let gpsWatchId = null; // Added to monitor precise location
 
         verifyIdBtn.addEventListener('click', verifyEmployee);
         proceedBtn.addEventListener('click', initCameraAndLocation);
@@ -253,7 +253,6 @@
             try {
                 const employeeId = employeeIdInput.value.trim();
                 
-                // Now links to the local HTML file on GitHub
                 myReportLink.href = `my_report.html?empId=${employeeId}`;
 
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
@@ -265,13 +264,18 @@
                 
                 enablePunchButtons(false, false); 
                 
-                locationInfo.textContent = 'Location prapt ki ja rahi hai...';
+                locationInfo.textContent = 'Hardware GPS se precise location li ja rahi hai...';
 
-                navigator.geolocation.getCurrentPosition(
+                // We now use watchPosition to continually update to the best accuracy possible
+                if (gpsWatchId) navigator.geolocation.clearWatch(gpsWatchId);
+                
+                gpsWatchId = navigator.geolocation.watchPosition(
                     (position) => {
                         currentCoordinates = position.coords;
-                        locationInfo.textContent = `Location: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`;
+                        // Added accuracy display to show how precise the lock is
+                        locationInfo.textContent = `Location: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)} (Accuracy: ${Math.round(position.coords.accuracy)}m)`;
                         
+                        // Enable buttons only after getting a location ping
                         if (attendanceStatus === "None") {
                             enablePunchButtons(true, false);
                         } else if (attendanceStatus === "PunchedIn") {
@@ -283,9 +287,10 @@
                     },
                     (error) => {
                         locationInfo.textContent = 'Location access nahi ho paaya.';
-                        showMessage('Location anivarya hai. Kripya permission aur GPS setting check karein.', 'error');
+                        showMessage('Location anivarya hai. Kripya permission aur phone ka GPS (Location) ON karein.', 'error');
                     },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    // Forces strict GPS hardware usage and allows time to lock
+                    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 } 
                 );
             } catch (err) {
                 showMessage('Camera access nahi ho paaya. Kripya permission check karein.', 'error');
@@ -359,6 +364,10 @@
         function stopCamera() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
+            }
+            if (gpsWatchId) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
             }
         }
 
